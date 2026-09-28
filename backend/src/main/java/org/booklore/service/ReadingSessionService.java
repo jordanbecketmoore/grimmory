@@ -476,6 +476,34 @@ public class ReadingSessionService {
                 .toList();
     }
 
+    public List<PagesPerDayResponse> getPagesPerDay(int year) {
+        Long userId = authenticationService.getAuthenticatedUser().getId();
+        ZoneId zone = ZoneId.systemDefault();
+        PeriodBounds bounds = computeYearBounds(year);
+
+        Map<LocalDate, Double> pagesByDate = new TreeMap<>();
+        Map<LocalDate, Set<Long>> booksByDate = new HashMap<>();
+
+        try (var sessions = readingSessionRepository.findPagesReadSessionsByUserAndPeriod(userId, bounds.start(), bounds.end())) {
+            sessions.forEach(session -> {
+                LocalDate date = session.getStartTime().atZone(zone).toLocalDate();
+                // progressDelta is a percentage; clamp so a jump past 100% can't exceed the book's length
+                double pages = Math.min(session.getProgressDelta(), 100f) / 100.0 * session.getPageCount();
+                pagesByDate.merge(date, pages, Double::sum);
+                booksByDate.computeIfAbsent(date, d -> new HashSet<>()).add(session.getBookId());
+            });
+        }
+
+        return pagesByDate.entrySet().stream()
+                .map(e -> PagesPerDayResponse.builder()
+                        .date(e.getKey())
+                        .pagesRead((int) Math.round(e.getValue()))
+                        .bookCount(booksByDate.get(e.getKey()).size())
+                        .build())
+                .filter(r -> r.getPagesRead() > 0)
+                .toList();
+    }
+
     public List<ReadingSessionHeatmapResponse> getReadingDates() {
         Long userId = authenticationService.getAuthenticatedUser().getId();
         ZoneId zone = ZoneId.systemDefault();

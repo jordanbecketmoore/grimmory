@@ -27,6 +27,7 @@ import {BookFlowChartComponent} from './charts/book-flow-chart/book-flow-chart.c
 import {ReadingDebtChartComponent} from './charts/reading-debt-chart/reading-debt-chart.component';
 import {PublicationEraChartComponent} from './charts/publication-era-chart/publication-era-chart.component';
 import {SessionArchetypesChartComponent} from './charts/session-archetypes-chart/session-archetypes-chart.component';
+import {PagesPerDayChartComponent} from './charts/pages-per-day-chart/pages-per-day-chart.component';
 import {UserChartConfig, UserChartConfigService} from './service/user-chart-config.service';
 import {StatsChartThemeService} from '../shared/stats-chart-theme.service';
 import {provideCharts, withDefaultRegisterables} from 'ng2-charts';
@@ -62,6 +63,7 @@ import {PageTitleService} from '../../../../shared/service/page-title.service';
     ReadingDebtChartComponent,
     PublicationEraChartComponent,
     SessionArchetypesChartComponent,
+    PagesPerDayChartComponent,
     TranslocoDirective
   ],
   providers: [provideCharts(withDefaultRegisterables())],

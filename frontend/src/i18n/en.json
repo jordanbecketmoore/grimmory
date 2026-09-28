@@ -4320,7 +4320,8 @@
       "bookFlow": "Book Flow",
       "readingDebt": "Reading Debt Waterfall",
       "publicationEra": "Publication Era vs Rating",
-      "sessionArchetypes": "Session Archetypes"
+      "sessionArchetypes": "Session Archetypes",
+      "pagesPerDay": "Pages Read Per Day"
     },
     "sessionHeatmap": {
       "title": "Reading Session Activity",
@@ -4815,6 +4816,21 @@
       "archetype_night": "Night Owl",
       "noData": "No reading sessions found for this year.",
       "noDataHint": "Track reading sessions to discover your session archetypes."
+    },
+    "pagesPerDay": {
+      "title": "Pages Read Per Day",
+      "description": "Pages read each day across all books, estimated from reading progress in Grimmory's readers",
+      "previousYear": "Previous year",
+      "nextYear": "Next year",
+      "axisDate": "Date",
+      "axisPages": "Pages",
+      "pagesRead": "Pages read",
+      "sevenDayAverage": "7-day average",
+      "tooltipPage": "{{ value }} page",
+      "tooltipPages": "{{ value }} pages",
+      "tooltipBook": "{{ books }} book",
+      "tooltipBooks": "{{ books }} books",
+      "tooltipAverage": "7-day average: {{ value }} pages"
     }
   },
   "magicShelf": {

@@ -21,8 +21,8 @@ describe('UserChartConfigService', () => {
   it('loads the default chart layout when nothing has been saved', () => {
     const service = TestBed.inject(UserChartConfigService);
 
-    expect(service.charts()).toHaveLength(23);
-    expect(service.visibleCharts()).toHaveLength(23);
+    expect(service.charts()).toHaveLength(24);
+    expect(service.visibleCharts()).toHaveLength(24);
     expect(service.charts()[0]).toEqual({
       id: 'heatmap',
       enabled: true,
@@ -81,7 +81,7 @@ describe('UserChartConfigService', () => {
       sizeClass: 'chart-full',
       order: 0,
     });
-    expect(service.visibleCharts()).toHaveLength(23);
+    expect(service.visibleCharts()).toHaveLength(24);
   });
 
   it('reorders the selected chart subset and preserves normalized storage order', () => {

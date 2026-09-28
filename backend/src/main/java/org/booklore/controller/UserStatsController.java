@@ -162,6 +162,17 @@ public class UserStatsController {
         return ResponseEntity.ok(data);
     }
 
+    @Operation(summary = "Get pages read per day", description = "Returns estimated pages read per day for a specific year, derived from reading session progress and book page counts")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Pages per day data retrieved successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    @GetMapping("/reading/pages-per-day")
+    @PreAuthorize("@securityUtil.canAccessUserStats() or @securityUtil.isAdmin()")
+    public ResponseEntity<List<PagesPerDayResponse>> getPagesPerDay(@RequestParam int year) {
+        return ResponseEntity.ok(readingSessionService.getPagesPerDay(year));
+    }
+
     @Operation(summary = "Get book distribution statistics", description = "Returns rating, progress, and read status distributions for the authenticated user's library")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Book distributions retrieved successfully"),

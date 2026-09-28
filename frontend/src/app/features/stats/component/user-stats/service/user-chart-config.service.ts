@@ -30,7 +30,8 @@ const DEFAULT_CHARTS: UserChartConfig[] = [
   {id: 'session-archetypes', enabled: true, sizeClass: 'chart-medium', order: 19},
   {id: 'book-flow', enabled: true, sizeClass: 'chart-medium', order: 20},
   {id: 'reading-habits', enabled: true, sizeClass: 'chart-medium', order: 21},
-  {id: 'reading-dna', enabled: true, sizeClass: 'chart-medium', order: 22}
+  {id: 'reading-dna', enabled: true, sizeClass: 'chart-medium', order: 22},
+  {id: 'pages-per-day', enabled: true, sizeClass: 'chart-full', order: 23}
 ];
 
 @Injectable({

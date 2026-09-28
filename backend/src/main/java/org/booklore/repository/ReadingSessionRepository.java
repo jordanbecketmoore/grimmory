@@ -192,6 +192,28 @@ public interface ReadingSessionRepository extends JpaRepository<ReadingSessionEn
             @Param("userId") Long userId,
             @Param("year") int year);
 
+    @QueryHints(@QueryHint(name = "org.hibernate.fetchSize", value = "200"))
+    @Query("""
+            SELECT
+                b.id as bookId,
+                rs.startTime as startTime,
+                rs.progressDelta as progressDelta,
+                bm.pageCount as pageCount
+            FROM ReadingSessionEntity rs
+            JOIN rs.book b
+            JOIN b.metadata bm
+            WHERE rs.user.id = :userId
+            AND rs.bookType != org.booklore.model.enums.BookFileType.AUDIOBOOK
+            AND rs.progressDelta > 0
+            AND bm.pageCount > 0
+            AND rs.startTime >= :periodStart AND rs.startTime < :periodEnd
+            ORDER BY rs.startTime
+            """)
+    Stream<PagesReadSessionDto> findPagesReadSessionsByUserAndPeriod(
+            @Param("userId") Long userId,
+            @Param("periodStart") Instant periodStart,
+            @Param("periodEnd") Instant periodEnd);
+
     @Query("""
             SELECT rs.startTime as startTime,
                    coalesce(rs.durationSeconds, 0) as durationSeconds

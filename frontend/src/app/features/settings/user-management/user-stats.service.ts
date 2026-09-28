@@ -70,6 +70,12 @@ export interface CompletionRaceResponse {
   endProgress: number;
 }
 
+export interface PagesPerDayResponse {
+  date: string;
+  pagesRead: number;
+  bookCount: number;
+}
+
 export interface SessionScatterResponse {
   hourOfDay: number;
   durationMinutes: number;
@@ -149,6 +155,13 @@ export class UserStatsService {
   getCompletionRace(year: number): Observable<CompletionRaceResponse[]> {
     return this.http.get<CompletionRaceResponse[]>(
       `${this.readingSessionsUrl}/reading/completion-race`,
+      {params: {year: year.toString()}}
+    );
+  }
+
+  getPagesPerDay(year: number): Observable<PagesPerDayResponse[]> {
+    return this.http.get<PagesPerDayResponse[]>(
+      `${this.readingSessionsUrl}/reading/pages-per-day`,
       {params: {year: year.toString()}}
     );
   }
