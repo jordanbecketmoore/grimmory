@@ -12,10 +12,13 @@ import org.booklore.model.entity.BookFileEntity;
 import org.booklore.model.entity.BookLoreUserEntity;
 import org.booklore.model.entity.KoreaderUserEntity;
 import org.booklore.model.entity.LibraryPathEntity;
+import org.booklore.model.entity.ReadingProgressHistoryEntity;
 import org.booklore.model.entity.UserBookProgressEntity;
 import org.booklore.model.enums.BookFileType;
 import org.booklore.model.enums.ReadStatus;
+import org.booklore.model.enums.ReadingProgressSource;
 import org.booklore.repository.BookRepository;
+import org.booklore.repository.ReadingProgressHistoryRepository;
 import org.booklore.repository.UserBookFileProgressRepository;
 import org.booklore.repository.UserBookProgressRepository;
 import org.booklore.repository.UserRepository;
@@ -58,6 +61,8 @@ class KoreaderServiceTest {
     HardcoverSyncService hardcoverSyncService;
     @Mock
     EpubCfiService epubCfiService;
+    @Mock
+    ReadingProgressHistoryRepository readingProgressHistoryRepo;
 
     @InjectMocks
     KoreaderService service;
@@ -331,6 +336,53 @@ class KoreaderServiceTest {
         assertEquals("y", existing.getKoreaderProgress());
         assertEquals(0.4F, existing.getKoreaderProgressPercent());
         verify(hardcoverSyncService, never()).syncProgressToHardcover(any(), any(), any());
+    }
+
+    private void saveProgressFrom(Float previousPercent, Float newPercent) {
+        when(details.isSyncEnabled()).thenReturn(true);
+        var book = new BookEntity();
+        book.setId(8L);
+        when(bookRepo.findByCurrentHash("h")).thenReturn(Optional.of(book));
+        var user = new BookLoreUserEntity();
+        user.setId(42L);
+        when(userRepo.findById(42L)).thenReturn(Optional.of(user));
+        var existing = new UserBookProgressEntity();
+        existing.setKoreaderProgressPercent(previousPercent);
+        when(progressRepo.findByUserIdAndBookId(42L, 8L)).thenReturn(Optional.of(existing));
+
+        service.saveProgress("h", KoreaderProgress.builder()
+                .document("h").progress("y").percentage(newPercent).device("d").device_id("id").build());
+    }
+
+    @Test
+    void saveProgress_forwardProgress_recordsHistoryInPercent() {
+        saveProgressFrom(0.25F, 0.4F);
+
+        ArgumentCaptor<ReadingProgressHistoryEntity> cap = ArgumentCaptor.forClass(ReadingProgressHistoryEntity.class);
+        verify(readingProgressHistoryRepo).save(cap.capture());
+        var history = cap.getValue();
+        assertEquals(ReadingProgressSource.KOREADER, history.getSource());
+        assertEquals(8L, history.getBook().getId());
+        assertEquals(42L, history.getUser().getId());
+        assertEquals(25F, history.getStartProgress(), 0.01F);
+        assertEquals(40F, history.getEndProgress(), 0.01F);
+        assertEquals(15F, history.getProgressDelta(), 0.01F);
+        assertNotNull(history.getRecordedAt());
+    }
+
+    @Test
+    void saveProgress_firstSync_doesNotRecordHistory() {
+        saveProgressFrom(null, 0.4F);
+
+        verify(readingProgressHistoryRepo, never()).save(any());
+    }
+
+    @Test
+    void saveProgress_backwardOrUnchangedProgress_doesNotRecordHistory() {
+        saveProgressFrom(0.5F, 0.3F);
+        saveProgressFrom(0.3F, 0.3F);
+
+        verify(readingProgressHistoryRepo, never()).save(any());
     }
 
     @Test

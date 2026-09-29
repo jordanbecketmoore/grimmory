@@ -7,6 +7,7 @@ import org.booklore.exception.ApiError;
 import org.booklore.model.dto.progress.KoreaderProgress;
 import org.booklore.model.entity.*;
 import org.booklore.model.enums.BookFileType;
+import org.booklore.model.enums.ReadingProgressSource;
 import org.booklore.model.enums.ReadStatus;
 import org.booklore.repository.*;
 import org.booklore.service.hardcover.HardcoverSyncService;
@@ -35,6 +36,7 @@ public class KoreaderService {
     private final KoreaderUserRepository koreaderUserRepository;
     private final HardcoverSyncService hardcoverSyncService;
     private final EpubCfiService epubCfiService;
+    private final ReadingProgressHistoryRepository readingProgressHistoryRepository;
 
     public ResponseEntity<Map<String, String>> authorizeUser() {
         KoreaderUserDetails authDetails = getAuthDetails();
@@ -92,6 +94,8 @@ public class KoreaderService {
         // Also save to file-level progress table (dual-write)
         saveToFileProgress(user, book, userProgress);
 
+        recordProgressHistory(user, book, previousProgressPercent, koProgress.getPercentage());
+
         log.info("saveProgress: saved progress='{}' percentage={} for userId={} bookHash={}", koProgress.getProgress(), koProgress.getPercentage(), authDetails.getBookLoreUserId(), bookHash);
 
         // Sync progress to Hardcover asynchronously (if enabled for this user)
@@ -144,6 +148,25 @@ public class KoreaderService {
         } catch (Exception e) {
             log.warn("Failed to sync progress to KOReader for userId={} bookId={}", userId, bookId, e);
         }
+    }
+
+    private void recordProgressHistory(BookLoreUserEntity user, BookEntity book, Float previousProgress, Float newProgress) {
+        // Without a previous position there is no baseline, so the first sync of a book is not counted
+        Float start = normalizeProgressPercent(previousProgress);
+        Float end = normalizeProgressPercent(newProgress);
+        if (start == null || end == null || end <= start) {
+            return;
+        }
+
+        readingProgressHistoryRepository.save(ReadingProgressHistoryEntity.builder()
+                .user(user)
+                .book(book)
+                .source(ReadingProgressSource.KOREADER)
+                .startProgress(start)
+                .endProgress(end)
+                .progressDelta(end - start)
+                .recordedAt(Instant.now())
+                .build());
     }
 
     private void saveToFileProgress(BookLoreUserEntity user, BookEntity book, UserBookProgressEntity progress) {

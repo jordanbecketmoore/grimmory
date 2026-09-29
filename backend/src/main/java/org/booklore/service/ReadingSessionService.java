@@ -13,6 +13,7 @@ import org.booklore.model.entity.CategoryEntity;
 import org.booklore.model.entity.ReadingSessionEntity;
 import org.booklore.model.enums.ReadStatus;
 import org.booklore.repository.BookRepository;
+import org.booklore.repository.ReadingProgressHistoryRepository;
 import org.booklore.repository.ReadingSessionRepository;
 import org.booklore.repository.UserBookProgressRepository;
 import org.booklore.repository.UserRepository;
@@ -48,6 +49,7 @@ public class ReadingSessionService {
     private final BookRepository bookRepository;
     private final UserRepository userRepository;
     private final UserBookProgressRepository userBookProgressRepository;
+    private final ReadingProgressHistoryRepository readingProgressHistoryRepository;
 
     record PeriodBounds(Instant start, Instant end) {}
 
@@ -484,8 +486,10 @@ public class ReadingSessionService {
         Map<LocalDate, Double> pagesByDate = new TreeMap<>();
         Map<LocalDate, Set<Long>> booksByDate = new HashMap<>();
 
-        try (var sessions = readingSessionRepository.findPagesReadSessionsByUserAndPeriod(userId, bounds.start(), bounds.end())) {
-            sessions.forEach(session -> {
+        // In-app reader sessions plus forward progress synced from KOReader
+        try (var sessions = readingSessionRepository.findPagesReadSessionsByUserAndPeriod(userId, bounds.start(), bounds.end());
+             var synced = readingProgressHistoryRepository.findPagesReadByUserAndPeriod(userId, bounds.start(), bounds.end())) {
+            Stream.concat(sessions, synced).forEach(session -> {
                 LocalDate date = session.getStartTime().atZone(zone).toLocalDate();
                 // progressDelta is a percentage; clamp so a jump past 100% can't exceed the book's length
                 double pages = Math.min(session.getProgressDelta(), 100f) / 100.0 * session.getPageCount();

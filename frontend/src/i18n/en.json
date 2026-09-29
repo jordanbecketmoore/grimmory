@@ -4819,7 +4819,7 @@
     },
     "pagesPerDay": {
       "title": "Pages Read Per Day",
-      "description": "Pages read each day across all books, estimated from reading progress in Grimmory's readers",
+      "description": "Pages read each day across all books, estimated from reading progress in Grimmory's readers and KOReader sync",
       "previousYear": "Previous year",
       "nextYear": "Next year",
       "axisDate": "Date",
