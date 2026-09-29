@@ -7,7 +7,6 @@ import org.booklore.exception.ApiError;
 import org.booklore.model.dto.progress.KoreaderProgress;
 import org.booklore.model.entity.*;
 import org.booklore.model.enums.BookFileType;
-import org.booklore.model.enums.ReadingProgressSource;
 import org.booklore.model.enums.ReadStatus;
 import org.booklore.repository.*;
 import org.booklore.service.hardcover.HardcoverSyncService;
@@ -36,7 +35,7 @@ public class KoreaderService {
     private final KoreaderUserRepository koreaderUserRepository;
     private final HardcoverSyncService hardcoverSyncService;
     private final EpubCfiService epubCfiService;
-    private final ReadingProgressHistoryRepository readingProgressHistoryRepository;
+    private final ReadingSessionRepository readingSessionRepository;
 
     public ResponseEntity<Map<String, String>> authorizeUser() {
         KoreaderUserDetails authDetails = getAuthDetails();
@@ -94,7 +93,7 @@ public class KoreaderService {
         // Also save to file-level progress table (dual-write)
         saveToFileProgress(user, book, userProgress);
 
-        recordProgressHistory(user, book, previousProgressPercent, koProgress.getPercentage());
+        recordSyncedReadingSession(user, book, previousProgressPercent, koProgress.getPercentage());
 
         log.info("saveProgress: saved progress='{}' percentage={} for userId={} bookHash={}", koProgress.getProgress(), koProgress.getPercentage(), authDetails.getBookLoreUserId(), bookHash);
 
@@ -150,22 +149,35 @@ public class KoreaderService {
         }
     }
 
-    private void recordProgressHistory(BookLoreUserEntity user, BookEntity book, Float previousProgress, Float newProgress) {
+    /**
+     * Records forward KOReader progress as a zero-length reading session so progress-based stats
+     * (e.g. pages read per day) include reading done on the device. KOReader syncs carry no timing,
+     * so the session starts and ends at the sync time; in-app sessions are always at least 30s long.
+     */
+    private void recordSyncedReadingSession(BookLoreUserEntity user, BookEntity book, Float previousProgress, Float newProgress) {
         // Without a previous position there is no baseline, so the first sync of a book is not counted
         Float start = normalizeProgressPercent(previousProgress);
         Float end = normalizeProgressPercent(newProgress);
-        if (start == null || end == null || end <= start) {
+        BookFileEntity primaryFile = book.getPrimaryBookFile();
+        if (start == null || end == null || end <= start || primaryFile == null) {
             return;
         }
 
-        readingProgressHistoryRepository.save(ReadingProgressHistoryEntity.builder()
+        Instant now = Instant.now();
+        readingSessionRepository.save(ReadingSessionEntity.builder()
                 .user(user)
                 .book(book)
-                .source(ReadingProgressSource.KOREADER)
+                .bookType(primaryFile.getBookType())
+                .startTime(now)
+                .endTime(now)
+                .durationSeconds(0)
+                .durationFormatted("0s")
                 .startProgress(start)
                 .endProgress(end)
                 .progressDelta(end - start)
-                .recordedAt(Instant.now())
+                // KOReader xpointers can exceed the 500-char location columns; a failed insert would roll back the sync
+                .startLocation("")
+                .endLocation("")
                 .build());
     }
 

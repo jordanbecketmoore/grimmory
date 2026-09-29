@@ -5,7 +5,6 @@ import org.booklore.model.dto.BookLoreUser;
 import org.booklore.model.dto.PagesReadSessionDto;
 import org.booklore.model.dto.response.PagesPerDayResponse;
 import org.booklore.repository.BookRepository;
-import org.booklore.repository.ReadingProgressHistoryRepository;
 import org.booklore.repository.ReadingSessionRepository;
 import org.booklore.repository.UserBookProgressRepository;
 import org.booklore.repository.UserRepository;
@@ -41,8 +40,6 @@ class ReadingSessionServiceTest {
     private UserRepository userRepository;
     @Mock
     private UserBookProgressRepository userBookProgressRepository;
-    @Mock
-    private ReadingProgressHistoryRepository readingProgressHistoryRepository;
 
     @InjectMocks
     private ReadingSessionService readingSessionService;
@@ -64,14 +61,8 @@ class ReadingSessionServiceTest {
     }
 
     private void givenSessions(Session... sessions) {
-        givenSessionsAndSyncedProgress(sessions, new Session[0]);
-    }
-
-    private void givenSessionsAndSyncedProgress(Session[] sessions, Session[] synced) {
         when(readingSessionRepository.findPagesReadSessionsByUserAndPeriod(eq(1L), any(Instant.class), any(Instant.class)))
                 .thenReturn(Stream.of(sessions));
-        when(readingProgressHistoryRepository.findPagesReadByUserAndPeriod(eq(1L), any(Instant.class), any(Instant.class)))
-                .thenReturn(Stream.of(synced));
     }
 
     @Test
@@ -130,20 +121,5 @@ class ReadingSessionServiceTest {
 
         assertEquals(List.of(earlier, later), result.stream().map(PagesPerDayResponse::getDate).toList());
         assertTrue(result.stream().allMatch(r -> r.getBookCount() == 1));
-    }
-
-    @Test
-    void getPagesPerDay_includesProgressSyncedFromKoreader() {
-        LocalDate day = LocalDate.of(2026, 4, 10);
-        givenSessionsAndSyncedProgress(
-                new Session[]{new Session(10L, at(day, 9), 10f, 300)},
-                new Session[]{new Session(20L, at(day, 22), 20f, 250)}
-        );
-
-        List<PagesPerDayResponse> result = readingSessionService.getPagesPerDay(2026);
-
-        assertEquals(1, result.size());
-        assertEquals(80, result.getFirst().getPagesRead());
-        assertEquals(2, result.getFirst().getBookCount());
     }
 }

@@ -12,13 +12,12 @@ import org.booklore.model.entity.BookFileEntity;
 import org.booklore.model.entity.BookLoreUserEntity;
 import org.booklore.model.entity.KoreaderUserEntity;
 import org.booklore.model.entity.LibraryPathEntity;
-import org.booklore.model.entity.ReadingProgressHistoryEntity;
+import org.booklore.model.entity.ReadingSessionEntity;
 import org.booklore.model.entity.UserBookProgressEntity;
 import org.booklore.model.enums.BookFileType;
 import org.booklore.model.enums.ReadStatus;
-import org.booklore.model.enums.ReadingProgressSource;
 import org.booklore.repository.BookRepository;
-import org.booklore.repository.ReadingProgressHistoryRepository;
+import org.booklore.repository.ReadingSessionRepository;
 import org.booklore.repository.UserBookFileProgressRepository;
 import org.booklore.repository.UserBookProgressRepository;
 import org.booklore.repository.UserRepository;
@@ -62,7 +61,7 @@ class KoreaderServiceTest {
     @Mock
     EpubCfiService epubCfiService;
     @Mock
-    ReadingProgressHistoryRepository readingProgressHistoryRepo;
+    ReadingSessionRepository readingSessionRepo;
 
     @InjectMocks
     KoreaderService service;
@@ -339,9 +338,11 @@ class KoreaderServiceTest {
     }
 
     private void saveProgressFrom(Float previousPercent, Float newPercent) {
+        saveProgressFrom(epubBook(8L), previousPercent, newPercent);
+    }
+
+    private void saveProgressFrom(BookEntity book, Float previousPercent, Float newPercent) {
         when(details.isSyncEnabled()).thenReturn(true);
-        var book = new BookEntity();
-        book.setId(8L);
         when(bookRepo.findByCurrentHash("h")).thenReturn(Optional.of(book));
         var user = new BookLoreUserEntity();
         user.setId(42L);
@@ -355,34 +356,47 @@ class KoreaderServiceTest {
     }
 
     @Test
-    void saveProgress_forwardProgress_recordsHistoryInPercent() {
+    void saveProgress_forwardProgress_recordsZeroLengthReadingSession() {
         saveProgressFrom(0.25F, 0.4F);
 
-        ArgumentCaptor<ReadingProgressHistoryEntity> cap = ArgumentCaptor.forClass(ReadingProgressHistoryEntity.class);
-        verify(readingProgressHistoryRepo).save(cap.capture());
-        var history = cap.getValue();
-        assertEquals(ReadingProgressSource.KOREADER, history.getSource());
-        assertEquals(8L, history.getBook().getId());
-        assertEquals(42L, history.getUser().getId());
-        assertEquals(25F, history.getStartProgress(), 0.01F);
-        assertEquals(40F, history.getEndProgress(), 0.01F);
-        assertEquals(15F, history.getProgressDelta(), 0.01F);
-        assertNotNull(history.getRecordedAt());
+        ArgumentCaptor<ReadingSessionEntity> cap = ArgumentCaptor.forClass(ReadingSessionEntity.class);
+        verify(readingSessionRepo).save(cap.capture());
+        var session = cap.getValue();
+        assertEquals(8L, session.getBook().getId());
+        assertEquals(42L, session.getUser().getId());
+        assertEquals(BookFileType.EPUB, session.getBookType());
+        assertEquals(25F, session.getStartProgress(), 0.01F);
+        assertEquals(40F, session.getEndProgress(), 0.01F);
+        assertEquals(15F, session.getProgressDelta(), 0.01F);
+        assertEquals(0, session.getDurationSeconds());
+        assertNotNull(session.getStartTime());
+        assertEquals(session.getStartTime(), session.getEndTime());
+        assertEquals("", session.getStartLocation());
+        assertEquals("", session.getEndLocation());
     }
 
     @Test
-    void saveProgress_firstSync_doesNotRecordHistory() {
+    void saveProgress_firstSync_doesNotRecordReadingSession() {
         saveProgressFrom(null, 0.4F);
 
-        verify(readingProgressHistoryRepo, never()).save(any());
+        verify(readingSessionRepo, never()).save(any());
     }
 
     @Test
-    void saveProgress_backwardOrUnchangedProgress_doesNotRecordHistory() {
+    void saveProgress_backwardOrUnchangedProgress_doesNotRecordReadingSession() {
         saveProgressFrom(0.5F, 0.3F);
         saveProgressFrom(0.3F, 0.3F);
 
-        verify(readingProgressHistoryRepo, never()).save(any());
+        verify(readingSessionRepo, never()).save(any());
+    }
+
+    @Test
+    void saveProgress_bookWithoutPrimaryFile_doesNotRecordReadingSession() {
+        var book = new BookEntity();
+        book.setId(8L);
+        saveProgressFrom(book, 0.25F, 0.4F);
+
+        verify(readingSessionRepo, never()).save(any());
     }
 
     @Test
